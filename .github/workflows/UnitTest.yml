@@ -23,6 +23,7 @@ jobs:
         curl -L https://github.com/docker/compose/releases/download/1.27.4/docker-compose-`uname -s`-`uname -m` > ~/docker-compose
         chmod +x ~/docker-compose
         sudo mv ~/docker-compose /usr/local/bin/docker-compose
+
     - name: Set up .env
       run: |
         cp .env-test .env
@@ -32,19 +33,22 @@ jobs:
         set -xe
         docker-compose build --no-cache
         docker/start -d web mongodb redis
+
     - name: rails test -v
       run: |
         set -xe
         docker/rails test -v
+
     - name: Passed Slack Nortification
       uses: rtCamp/action-slack-notify@v2.0.0
-      if: ${{ env.SLACK_WEBHOOK != null && success() }}
+      if: ${{ secrets.SLACK_WEBHOOK != null && success() }}
       env:
         SLACK_COLOR: '#0000f2'
         SLACK_MESSAGE: 'Passed unittest :100:'
+
     - name: NG Slack Nortification
       uses: rtCamp/action-slack-notify@v2.0.0
-      if: ${{ env.SLACK_WEBHOOK != null && failure() }}
+      if: ${{ secrets.SLACK_WEBHOOK != null && failure() }}
       env:
         SLACK_COLOR: '#ed0707'
         SLACK_MESSAGE: 'NG unittest :ng:'
