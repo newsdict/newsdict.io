@@ -20,6 +20,7 @@ class Content < ApplicationRecord
   field :user_id, type: BSON::ObjectId
   field :count_of_shared, type: Integer
   field :unique_id, type: String
+  field :last_modified_at, type: DateTime
   include Mongoid::Timestamps
   belongs_to :source, optional: true
   belongs_to :user, optional: true
@@ -28,6 +29,7 @@ class Content < ApplicationRecord
   validates :unique_id, length: {maximum: 255}
   validates :shared_text, length: { minimum: 0, allow_nil: false, message: "can't be nil" }
   SORT_TYPE = {
+    :last_modified_at => {last_modified_at: :desc},
     :created_at => {created_at: :desc},
     :updated_at => {updated_at: :desc},
     :count_of_shared => {count_of_shared: :desc}
@@ -69,7 +71,8 @@ class Content < ApplicationRecord
         :language_code => web_stat[:language_code],
         :tags => web_stat[:tags],
         :source_id => object.id,
-        :user_id => object.user_id
+        :user_id => object.user_id,
+        :last_modified_at => web_stat[:last_modified_at]
       }
       # Add the tags
       web_stat[:tags].each do |name|
@@ -99,7 +102,7 @@ class Content < ApplicationRecord
       if already_content && already_content.source.update?(already_content, attrs)
         already_content.update_attributes(attrs)
         already_content.inc(count_of_shared: 1)
-      else
+      elsif already_content&.unique_id != attrs[:unique_id].to_s
         # Translate
         if attrs[:language_code] != ENV["default_locale"] && EasyTranslate.api_key.present?
           attrs[:content_text] = EasyTranslate.translate(attrs[:content_text], :to => ENV["default_locale"])
@@ -134,7 +137,7 @@ class Content < ApplicationRecord
     # Sort the content by sort_type
     # @param [Symbol] sort_type
     # @return [Content]
-    def sortable(sort_type=:created_at)
+    def sortable(sort_type=:last_modified_at)
       if Content::SORT_TYPE.key?(sort_type)
         sort_type_sym = sort_type.to_sym
       end
@@ -144,7 +147,7 @@ class Content < ApplicationRecord
     # @params [String] gt
     # @params [String] lte
     # @return [Contents]
-    def term(gt, lte, key = :created_at)
+    def term(gt, lte, key = :last_modified_at)
       gt(key => gt).lte(key => lte)
     end
     # If it return a content, instance is uniq contents.

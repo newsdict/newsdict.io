@@ -7,17 +7,22 @@ class ImagesController < ApplicationController
     elsif content && content.image_svg
       send_data content.image_svg, type: 'image/svg+xml'
     else
-      redirect_to ActionController::Base.helpers.image_path("noimage")
+      raise ::ImageNotFoundException
     end
+  rescue ActionDispatch::Http::MimeNegotiation::InvalidType, ::ImageNotFoundException
+    redirect_to ActionController::Base.helpers.image_path("noimage")
   end
+
   # View user's icon
   # @params [BSON::ObjectId] id
   def user_icon(id)
     source = Source.find(id)
-    if source.icon
+    if source&.icon
       send_data source.icon_blob.data, :type => 'image', :disposition => 'inline'
     else
       raise ::ImageNotFoundException
     end
+  rescue ActionDispatch::Http::MimeNegotiation::InvalidType, ::ImageNotFoundException
+    redirect_to ActionController::Base.helpers.image_path("noimage_user")
   end
 end
